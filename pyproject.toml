@@ -9,6 +9,7 @@ python = "^3.8"
 Flask = "^2.0.1"
 discord = "^1.7.3"
 emoji = "^1.5.0"
+discord-together = "^1.1.1"
 
 [tool.poetry.dev-dependencies]
 

@@ -1,15 +1,17 @@
 '''
 Inferbot ©2021 Infernaught
 Created by Nathan Boehm
+If the code outputs an error on startup, type this into the shell:
+pip install discord-together
 '''
 import discord
-import asyncio
 import re
 import os
 from PIL import Image, ImageFont, ImageDraw
 import math
 import requests
 import emoji
+from discordTogether import DiscordTogether
 from keep_alive import keep_alive
 client = discord.Client()
 
@@ -27,6 +29,7 @@ async def on_message(message):
     embedVar.add_field(name="!help [command]", value="Gives information about a command.", inline=False)
     embedVar.add_field(name="!hottake [your hot take]", value="Sends an anonymous post in #hot-music-takes. Only works in DMs.", inline=False)
     embedVar.add_field(name="!album [text] [image]", value="Generates an album cover with the image and the title you send.", inline=False)
+    embedVar.add_field(name="!party", value="Starts YouTube Together, letting you play music in the voice channel.", inline=False)
     embedVar.set_footer(text="Alan please add footer.")
     await message.channel.send(embed=embedVar)
   if message.content == "!help help":
@@ -54,7 +57,7 @@ async def on_message(message):
   if message.content.startswith("!album "):
     custom_emojis = re.findall(r'<:\w*:\d*>', message.content)
     if len(custom_emojis) > 0 or emoji.demojize(message.content) != message.content:
-      await message.channel.send("You can't have emojis in that command.")
+      await message.channel.send("You can't have emojis in the command.")
       return
     text = message.content[7:]
     for mention in message.mentions:
@@ -62,7 +65,7 @@ async def on_message(message):
     if len(message.attachments) == 0:
       await message.channel.send("Please send an image with the command.")
       return
-    if message.attachments[0].url[-4:] != ".png" and message.attachments[0].url[-4:] != ".jpg" and message.attachments[0].url[-4:] != ".jpeg" and message.attachments[0].url[-4:] != ".gif":
+    if message.attachments[0].url[-4:].lower() != ".png" and message.attachments[0].url[-4:].lower() != ".jpg" and message.attachments[0].url[-5:].lower() != ".jpeg" and message.attachments[0].url[-4:].lower() != ".gif":
       await message.channel.send("The file type you sent is invalid.")
       return
     logo = Image.open("blankalbum.png")
@@ -81,14 +84,29 @@ async def on_message(message):
       final2 = Image.alpha_composite(final2, logo.resize((image.height, image.height)).crop((math.floor(0 - ((image.width - image.height) / 2)), 0, math.floor(image.height + ((image.width - image.height) / 2)), image.height)).convert('RGBA'))
     #image.paste(logo.resize((image.width, image.width)), (0, 0))
     fontsize = 1
-    font = ImageFont.truetype("timesnewroman.ttf", 1)
-    while font.getsize(text)[0] < image.width * 0.9 and font.getsize(text)[1] < image.height / 2:
-      fontsize += 1
-      font = ImageFont.truetype("timesnewroman.ttf", fontsize)
     draw = ImageDraw.Draw(final2)
+    font = ImageFont.truetype("timesnewroman.ttf", 1)
     textw, texth = draw.textsize(text, font=font)
+    #while font.getsize(text)[0] < image.width * 0.9 and font.getsize(text)[1] < image.height / 2:
+    while textw < image.width * 0.9 and texth < image.height / 2:
+      fontsize += 1
+      textw, texth = draw.textsize(text, font=font)
+      font = ImageFont.truetype("timesnewroman.ttf", fontsize)
     draw.text(((image.width - textw) / 2, image.height * 0.75 - texth / 2), text, (255, 0, 0), font=font)
     final2.save("album.png")
+    if os.path.getsize("album.png") >= 8000000:
+      final2 = final2.resize((math.floor(final2.width / 2), math.floor(final2.height / 2)))
+      final2.save("album.png")
     await message.channel.send(file=discord.File("album.png"))
+  if message.content == "!help party":
+    embedVar = discord.Embed(title="!party", description="Starts YouTube Together, letting you play music in the voice channel. You have to be in a voice channel to use this command.", color=0xffff00)
+    embedVar.set_footer(text="Moosic")
+  if message.content == "!party":
+    if message.author.voice is None:
+      await message.channel.send("You need to be in a voice channel to use this command.")
+    else:
+      togetherControl = DiscordTogether(client)
+      link = await togetherControl.create_link(message.author.voice.channel.id, 'youtube')
+      await message.channel.send(f"Click the blue link!\n{link}")
 keep_alive()
 client.run(os.getenv("TOKEN"))
